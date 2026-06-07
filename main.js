@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, screen, ipcMain, Menu, desktopCapturer, dialog, nativeImage, globalShortcut, shell, systemPreferences } = require("electron");
+const { app, BrowserWindow, Tray, screen, ipcMain, Menu, desktopCapturer, dialog, nativeImage, globalShortcut, shell, systemPreferences } = require("electron");
 const autoUpdater = {
   autoDownload: false,
   autoInstallOnAppQuit: false,
@@ -85,6 +85,7 @@ let petWin = null;
 let patternWin = null;
 let mappingWin = null;
 let licenseWin = null;
+let tray = null;
 let shareOverlayWin = null;
 let shareControlsWin = null;
 let shareCaptureSession = null;
@@ -1186,29 +1187,29 @@ function createPetWindow() {
     currentPetPosition :
     defaultPetPosition(display, W, H);
 
-  petWin = new BrowserWindow({
-    width: W,
-    height: H,
-    x: initialPosition.x,
-    y: initialPosition.y,
-    frame: false,
-    transparent: true,
-    backgroundColor: "#00000000",
-    alwaysOnTop: true,
-    resizable: false,
-    skipTaskbar: false,
-    hasShadow: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    focusable: true,
-    icon: APP_ICON_PATH,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
+petWin = new BrowserWindow({
+  width: W,
+  height: H,
+  x: initialPosition.x,
+  y: initialPosition.y,
+  frame: false,
+  transparent: true,
+  backgroundColor: "#00000000",
+  alwaysOnTop: true,
+  resizable: false,
+  skipTaskbar: true,
+  hasShadow: false,
+  minimizable: false,
+  maximizable: false,
+  fullscreenable: false,
+  focusable: true,
+  icon: APP_ICON_PATH,
+  webPreferences: {
+    preload: path.join(__dirname, "preload.js"),
+    contextIsolation: true,
+    nodeIntegration: false,
+  },
+});
 
   attachWindowDiagnostics(petWin, "pet");
   keepWindowOnTop(petWin);
@@ -1229,7 +1230,7 @@ function createPetWindow() {
       }, 1000);
     }
   });
-  if (!app.isPackaged) petWin.webContents.openDevTools({ mode: "detach" });
+  //if (!app.isPackaged) petWin.webContents.openDevTools({ mode: "detach" });
 
   // 60Hz 마우스 위치 폴링 → renderer로 dx/dy 전송
   cursorPollTimer = setInterval(() => {
@@ -2867,6 +2868,45 @@ app.whenReady().then(async () => {
       return;
     }
     app.setName("Catjang");
+    tray = new Tray(APP_ICON_PATH);
+
+tray.setToolTip("Catjang");
+
+tray.setContextMenu(
+  Menu.buildFromTemplate([
+    {
+      label: "Show Catjang",
+      click: () => {
+        if (petWin) petWin.show();
+      }
+    },
+    {
+      label: "Hide Catjang",
+      click: () => {
+        if (petWin) petWin.hide();
+      }
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        app.quit();
+      }
+    }
+  ])
+);
+
+tray.on("double-click", () => {
+  if (!petWin) return;
+
+  if (petWin.isVisible()) {
+    petWin.hide();
+  } else {
+    petWin.show();
+  }
+});
+
+
     if (app.dock && fs.existsSync(APP_ICON_PATH)) {
       app.dock.setIcon(nativeImage.createFromPath(APP_ICON_PATH));
     }
